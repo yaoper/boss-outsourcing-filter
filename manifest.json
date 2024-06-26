@@ -1,0 +1,20 @@
+{
+    "manifest_version": 3,
+    "name": "My First Extension",
+    "version": "1.0",
+    "description": "A simple Chrome extension example.",
+    "permissions": [
+      "activeTab",
+      "storage"
+    ],
+    "background": {
+      "service_worker": "background.js"
+    },
+    "content_scripts": [
+      {
+        "matches": ["<all_urls>"],
+        "js": ["content.js"]
+      }
+    ]
+  }
+  
