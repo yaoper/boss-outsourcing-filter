@@ -1,20 +1,30 @@
 {
-    "manifest_version": 3,
-    "name": "My First Extension",
-    "version": "1.0",
-    "description": "A simple Chrome extension example.",
-    "permissions": [
-      "activeTab",
-      "storage"
-    ],
-    "background": {
-      "service_worker": "background.js"
-    },
-    "content_scripts": [
-      {
-        "matches": ["<all_urls>"],
-        "js": ["content.js"]
-      }
-    ]
-  }
-  
+  "manifest_version": 3,
+  "name": "Outsource Company Highlighter",
+  "version": "1.0",
+  "description": "Highlight outsource companies in job listings.",
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "icon_16.png",
+    "48": "icon_48.png",
+    "128": "icon_128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["companies.txt"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
