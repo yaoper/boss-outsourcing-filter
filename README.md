@@ -3,8 +3,6 @@
 一个简单但实用的 Chrome 扩展插件，帮助求职者在 BOSS 直聘上快速识别外包公司。
 
 ![外包公司标记示例1](./screenshots/demo1.png)
-![外包公司标记示例2](./screenshots/demo2.png)
-![外包公司标记示例3](./screenshots/demo3.png)
 
 ## 功能特点
 
