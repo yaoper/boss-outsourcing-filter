@@ -21,23 +21,45 @@ async function checkAndMarkOutsourceCompanies() {
       if (companyNames.some(name => companyName.includes(name))) {
         // 检查是否已经添加过标记
         if (!card.querySelector('.outsource-company-badge')) {
-          // 创建新的 div 元素
-          const outsourceDiv = document.createElement('div');
-          outsourceDiv.textContent = '外包公司';
-          outsourceDiv.className = 'outsource-company-badge';
-          outsourceDiv.style.position = 'absolute';
-          outsourceDiv.style.top = '10px';
-          outsourceDiv.style.right = '10px';
-          outsourceDiv.style.backgroundColor = 'red';
-          outsourceDiv.style.color = 'white';
-          outsourceDiv.style.padding = '5px';
-          outsourceDiv.style.borderRadius = '4px';
-          outsourceDiv.style.fontSize = '12px';
-          outsourceDiv.style.zIndex = '1000';
+          // 创建外层容器
+          const containerDiv = document.createElement('div');
+          containerDiv.className = 'outsource-company-badge';
+          containerDiv.style.position = 'absolute';
+          containerDiv.style.top = '16px';
+          containerDiv.style.left = '200px';
+          containerDiv.style.display = 'flex';
+          containerDiv.style.padding = '2px';
+          containerDiv.style.backgroundColor = '#000000';
+          containerDiv.style.borderRadius = '2px';
+          containerDiv.style.zIndex = '1000';
           
-          // 将新的 div 元素添加到 card 元素中
+          // 创建左侧"外包"元素
+          const leftDiv = document.createElement('div');
+          leftDiv.textContent = '外包';
+          leftDiv.style.backgroundColor = '#000000';
+          leftDiv.style.color = '#ffffff';
+          leftDiv.style.padding = '3px 6px';
+          leftDiv.style.fontSize = '13px';
+          leftDiv.style.fontWeight = 'bold';
+          leftDiv.style.letterSpacing = '0.5px';
+          
+          // 创建右侧"公司"元素
+          const rightDiv = document.createElement('div');
+          rightDiv.textContent = '公司';
+          rightDiv.style.backgroundColor = '#f90';
+          rightDiv.style.color = '#000000';
+          rightDiv.style.padding = '3px 6px';
+          rightDiv.style.fontSize = '13px';
+          rightDiv.style.fontWeight = 'bold';
+          rightDiv.style.letterSpacing = '0.5px';
+          
+          // 组装标记
+          containerDiv.appendChild(leftDiv);
+          containerDiv.appendChild(rightDiv);
+          
+          // 将新的标记添加到 card 元素中
           card.style.position = 'relative';
-          card.appendChild(outsourceDiv);
+          card.appendChild(containerDiv);
         }
       }
     }
