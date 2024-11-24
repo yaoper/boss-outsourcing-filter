@@ -15,24 +15,30 @@ async function checkAndMarkOutsourceCompanies() {
   jobCards.forEach(card => {
     // 查找 boss-name 元素
     const bossNameSpan = card.querySelector('.boss-name');
-
-    if (bossNameSpan && companyNames.includes(bossNameSpan.textContent.trim())) {
-      // 检查是否已经添加过标记
-      if (!card.querySelector('.outsource-company-badge')) {
-        // 创建新的 div 元素
-        const outsourceDiv = document.createElement('div');
-        outsourceDiv.textContent = '外包公司';
-        outsourceDiv.className = 'outsource-company-badge';
-        outsourceDiv.style.position = 'absolute';
-        outsourceDiv.style.top = '10px';
-        outsourceDiv.style.right = '10px';
-        outsourceDiv.style.backgroundColor = 'red';
-        outsourceDiv.style.padding = '5px';
-        outsourceDiv.style.border = '1px solid black';
-        
-        // 将新的 div 元素添加到 li 元素中
-        card.style.position = 'relative'; // 确保 li 元素的 position 为 relative
-        card.appendChild(outsourceDiv);
+    
+    if (bossNameSpan) {
+      const companyName = bossNameSpan.textContent.trim();
+      if (companyNames.some(name => companyName.includes(name))) {
+        // 检查是否已经添加过标记
+        if (!card.querySelector('.outsource-company-badge')) {
+          // 创建新的 div 元素
+          const outsourceDiv = document.createElement('div');
+          outsourceDiv.textContent = '外包公司';
+          outsourceDiv.className = 'outsource-company-badge';
+          outsourceDiv.style.position = 'absolute';
+          outsourceDiv.style.top = '10px';
+          outsourceDiv.style.right = '10px';
+          outsourceDiv.style.backgroundColor = 'red';
+          outsourceDiv.style.color = 'white';
+          outsourceDiv.style.padding = '5px';
+          outsourceDiv.style.borderRadius = '4px';
+          outsourceDiv.style.fontSize = '12px';
+          outsourceDiv.style.zIndex = '1000';
+          
+          // 将新的 div 元素添加到 card 元素中
+          card.style.position = 'relative';
+          card.appendChild(outsourceDiv);
+        }
       }
     }
   });
@@ -42,21 +48,42 @@ async function checkAndMarkOutsourceCompanies() {
 checkAndMarkOutsourceCompanies();
 
 // 使用 MutationObserver 监听 DOM 变化
-const observer = new MutationObserver(mutations => {
-  mutations.forEach(mutation => {
-    if (mutation.addedNodes) {
-      mutation.addedNodes.forEach(node => {
-        if (node.nodeType === 1 && node.classList.contains('job-card-box')) {
-          // 新添加的节点是 job-card-box，进行检查
-          checkAndMarkOutsourceCompanies();
+const observer = new MutationObserver((mutations) => {
+  let shouldCheck = false;
+  
+  for (const mutation of mutations) {
+    // 检查是否有新节点添加
+    if (mutation.addedNodes && mutation.addedNodes.length > 0) {
+      for (const node of mutation.addedNodes) {
+        if (node.nodeType === 1 && (
+          node.classList?.contains('job-card-box') || 
+          node.querySelector?.('.job-card-box')
+        )) {
+          shouldCheck = true;
+          break;
         }
-      });
+      }
     }
-  });
+    
+    if (shouldCheck) break;
+  }
+  
+  if (shouldCheck) {
+    checkAndMarkOutsourceCompanies();
+  }
 });
 
-// 开始观察 body 节点的子节点变化
-observer.observe(document.body, {
+// 开始观察整个文档的变化
+observer.observe(document.documentElement, {
   childList: true,
   subtree: true
+});
+
+// 添加滚动事件监听器
+let scrollTimeout;
+window.addEventListener('scroll', () => {
+  clearTimeout(scrollTimeout);
+  scrollTimeout = setTimeout(() => {
+    checkAndMarkOutsourceCompanies();
+  }, 500);
 });
