@@ -1,111 +1,117 @@
-// 异步读取公司名称文件并返回数组
-async function fetchCompanyNames() {
-  const response = await fetch(chrome.runtime.getURL('companies.txt'));
-  const text = await response.text();
-  return text.split('\n').map(name => name.trim()).filter(name => name.length > 0);
+// 词库单例缓存：整个生命周期只 fetch 一次 companies.txt，预编译为正则表达式
+let outsourceRegexPromise = null;
+
+function getOutsourceRegex() {
+  if (!outsourceRegexPromise) {
+    outsourceRegexPromise = fetch(chrome.runtime.getURL('companies.txt'))
+      .then(res => res.text())
+      .then(text => {
+        const names = [...new Set(
+          text.split('\n').map(n => n.trim()).filter(Boolean)
+        )];
+        const escaped = names.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        return new RegExp(escaped.join('|'));
+      });
+  }
+  return outsourceRegexPromise;
 }
 
-// 函数：检查并标记外包公司
-async function checkAndMarkOutsourceCompanies() {
-  const companyNames = await fetchCompanyNames();
-  
-  // 查找所有的 job-card-box 元素
-  const jobCards = document.querySelectorAll('.job-card-box');
+// 样式注入：一次性写入 CSS 类，替代逐元素行内样式赋值
+function injectStyles() {
+  const style = document.createElement('style');
+  style.textContent = `
+    .outsource-company-badge {
+      position: absolute;
+      top: 16px;
+      left: 200px;
+      display: flex;
+      padding: 2px;
+      background-color: #000000;
+      border-radius: 2px;
+      z-index: 1000;
+    }
+    .outsource-badge-left {
+      background-color: #000000;
+      color: #ffffff;
+      padding: 3px 6px;
+      font-size: 13px;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+    }
+    .outsource-badge-right {
+      background-color: #f90;
+      color: #000000;
+      padding: 3px 6px;
+      font-size: 13px;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+    }
+  `;
+  document.head.appendChild(style);
+}
 
-  jobCards.forEach(card => {
-    // 查找 boss-name 元素
+// 增量检测：仅处理尚未扫描过的卡片
+async function checkAndMarkOutsourceCompanies() {
+  const regex = await getOutsourceRegex();
+  const uncheckedCards = document.querySelectorAll('.job-card-box:not([data-outsource-checked])');
+
+  uncheckedCards.forEach(card => {
+    card.dataset.outsourceChecked = 'true';
+
     const bossNameSpan = card.querySelector('.boss-name');
-    
-    if (bossNameSpan) {
-      const companyName = bossNameSpan.textContent.trim();
-      if (companyNames.some(name => companyName.includes(name))) {
-        // 检查是否已经添加过标记
-        if (!card.querySelector('.outsource-company-badge')) {
-          // 创建外层容器
-          const containerDiv = document.createElement('div');
-          containerDiv.className = 'outsource-company-badge';
-          containerDiv.style.position = 'absolute';
-          containerDiv.style.top = '16px';
-          containerDiv.style.left = '200px';
-          containerDiv.style.display = 'flex';
-          containerDiv.style.padding = '2px';
-          containerDiv.style.backgroundColor = '#000000';
-          containerDiv.style.borderRadius = '2px';
-          containerDiv.style.zIndex = '1000';
-          
-          // 创建左侧"外包"元素
-          const leftDiv = document.createElement('div');
-          leftDiv.textContent = '外包';
-          leftDiv.style.backgroundColor = '#000000';
-          leftDiv.style.color = '#ffffff';
-          leftDiv.style.padding = '3px 6px';
-          leftDiv.style.fontSize = '13px';
-          leftDiv.style.fontWeight = 'bold';
-          leftDiv.style.letterSpacing = '0.5px';
-          
-          // 创建右侧"公司"元素
-          const rightDiv = document.createElement('div');
-          rightDiv.textContent = '公司';
-          rightDiv.style.backgroundColor = '#f90';
-          rightDiv.style.color = '#000000';
-          rightDiv.style.padding = '3px 6px';
-          rightDiv.style.fontSize = '13px';
-          rightDiv.style.fontWeight = 'bold';
-          rightDiv.style.letterSpacing = '0.5px';
-          
-          // 组装标记
-          containerDiv.appendChild(leftDiv);
-          containerDiv.appendChild(rightDiv);
-          
-          // 将新的标记添加到 card 元素中
-          card.style.position = 'relative';
-          card.appendChild(containerDiv);
-        }
-      }
+    if (!bossNameSpan) return;
+
+    const companyName = bossNameSpan.textContent.trim();
+    if (regex.test(companyName)) {
+      card.style.position = 'relative';
+      card.insertAdjacentHTML('beforeend',
+        '<div class="outsource-company-badge">' +
+          '<div class="outsource-badge-left">外包</div>' +
+          '<div class="outsource-badge-right">公司</div>' +
+        '</div>'
+      );
     }
   });
 }
 
-// 初始化时检查现有的 job-card-box 元素
+// 防抖调度器：合并高频触发为单次执行
+let debounceTimer = null;
+function scheduleCheck() {
+  if (debounceTimer) return;
+  debounceTimer = requestAnimationFrame(() => {
+    debounceTimer = null;
+    checkAndMarkOutsourceCompanies();
+  });
+}
+
+// 初始化
+injectStyles();
 checkAndMarkOutsourceCompanies();
 
-// 使用 MutationObserver 监听 DOM 变化
-const observer = new MutationObserver((mutations) => {
-  let shouldCheck = false;
-  
+// MutationObserver：监听新增卡片节点，带防抖
+const observer = new MutationObserver(mutations => {
   for (const mutation of mutations) {
-    // 检查是否有新节点添加
-    if (mutation.addedNodes && mutation.addedNodes.length > 0) {
-      for (const node of mutation.addedNodes) {
-        if (node.nodeType === 1 && (
-          node.classList?.contains('job-card-box') || 
-          node.querySelector?.('.job-card-box')
-        )) {
-          shouldCheck = true;
-          break;
-        }
+    if (!mutation.addedNodes || mutation.addedNodes.length === 0) continue;
+    for (const node of mutation.addedNodes) {
+      if (node.nodeType === 1 && (
+        node.classList?.contains('job-card-box') ||
+        node.querySelector?.('.job-card-box')
+      )) {
+        scheduleCheck();
+        return;
       }
     }
-    
-    if (shouldCheck) break;
-  }
-  
-  if (shouldCheck) {
-    checkAndMarkOutsourceCompanies();
   }
 });
 
-// 开始观察整个文档的变化
 observer.observe(document.documentElement, {
   childList: true,
   subtree: true
 });
 
-// 添加滚动事件监听器
+// 滚动兜底：低频备用检测，覆盖 MutationObserver 可能遗漏的懒加载场景
 let scrollTimeout;
 window.addEventListener('scroll', () => {
   clearTimeout(scrollTimeout);
-  scrollTimeout = setTimeout(() => {
-    checkAndMarkOutsourceCompanies();
-  }, 500);
+  scrollTimeout = setTimeout(scheduleCheck, 500);
 });
